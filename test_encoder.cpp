@@ -98,6 +98,9 @@ namespace
 
     bool testInvalidCodeTables()
     {
+        const std::string path = "encoder_invalid_test.huff";
+        std::remove(path.c_str());
+
         const std::vector<uint8_t> input = {'X'};
         const std::unordered_map<uint8_t, std::string> missingCode;
         const std::unordered_map<uint8_t, std::string> invalidCode = {
@@ -107,15 +110,25 @@ namespace
             {'X', ""}
         };
 
-        return expect(!writeHuffFile(input, missingCode,
-                                     "encoder_invalid_test.huff"),
-                      "reject missing code") &&
-               expect(!writeHuffFile(input, invalidCode,
-                                     "encoder_invalid_test.huff"),
-                      "reject non-binary code") &&
-               expect(!writeHuffFile(input, emptyCode,
-                                     "encoder_invalid_test.huff"),
-                      "reject empty code for an occurring symbol");
+        const bool missingRejected =
+            !writeHuffFile(input, missingCode, path);
+        const bool invalidRejected =
+            !writeHuffFile(input, invalidCode, path);
+        const bool emptyRejected =
+            !writeHuffFile(input, emptyCode, path);
+        bool outputWasNotCreated = false;
+        {
+            const std::ifstream output(path.c_str(), std::ios::binary);
+            outputWasNotCreated = !output.is_open();
+        }
+        std::remove(path.c_str());
+
+        return expect(missingRejected, "reject missing code") &&
+               expect(invalidRejected, "reject non-binary code") &&
+               expect(emptyRejected,
+                      "reject empty code for an occurring symbol") &&
+               expect(outputWasNotCreated,
+                      "reject invalid codes before creating output");
     }
 
     bool testUnwritableDestination()
