@@ -110,6 +110,29 @@ void testNullRoot()
     assert(codes.empty());
 }
 
+void testEqualFrequencies()
+{
+    std::map<uint8_t, std::uint64_t> frequencies = {
+        {'A', 5},
+        {'B', 5},
+        {'C', 5},
+        {'D', 5}
+    };
+
+    auto root = buildHuffmanTree(frequencies);
+    auto codes = generateHuffmanCodes(root);
+
+    assert(root != nullptr);
+    assert(codes.size() == frequencies.size());
+    assert(isPrefixFree(codes));
+
+    for (const auto& entry : frequencies)
+    {
+        assert(codes.find(entry.first) != codes.end());
+        assert(!codes.at(entry.first).empty());
+    }
+}
+
 int main()
 {
     std::cout << "Test program started" << std::endl;
@@ -128,6 +151,9 @@ int main()
 
     testNullRoot();
     std::cout << "Null-root test passed" << std::endl;
+
+    testEqualFrequencies();
+    std::cout << "Equal-frequency test passed" << std::endl;
 
     std::cout << "All Huffman tree tests passed!" << std::endl;
 
