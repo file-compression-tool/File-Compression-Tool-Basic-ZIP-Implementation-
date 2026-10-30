@@ -98,7 +98,7 @@ HuffmanCodeMap generateHuffmanCodes(
         if (current.node->isLeaf())
         {
             codes[current.node->symbol] =
-                current.prefix.empty() ? "0" : current.prefix;
+                current.prefix.empty() ? "0" : std::move(current.prefix);
             continue;
         }
 
@@ -108,14 +108,19 @@ HuffmanCodeMap generateHuffmanCodes(
                 "Internal Huffman node must have both children.");
         }
 
+        std::string rightPrefix = current.prefix;
+        rightPrefix.push_back('1');
+
+        current.prefix.push_back('0');
+
         pending.push_back({
             current.node->right,
-            current.prefix + "1"
+            std::move(rightPrefix)
         });
 
         pending.push_back({
             current.node->left,
-            current.prefix + "0"
+            std::move(current.prefix)
         });
     }
 
