@@ -21,6 +21,11 @@ namespace
             return a->symbol > b->symbol;
         }
     };
+
+    using NodeQueue = std::priority_queue<
+        std::shared_ptr<HuffmanNode>,
+        std::vector<std::shared_ptr<HuffmanNode>>,
+        CompareNodes>;
 }
 
 std::shared_ptr<HuffmanNode> buildHuffmanTree(
@@ -29,10 +34,12 @@ std::shared_ptr<HuffmanNode> buildHuffmanTree(
     if (frequencies.empty())
         return nullptr;
 
-    std::priority_queue<
-        std::shared_ptr<HuffmanNode>,
-        std::vector<std::shared_ptr<HuffmanNode>>,
-        CompareNodes> queue;
+    std::vector<std::shared_ptr<HuffmanNode>> storage;
+    storage.reserve(frequencies.size());
+
+    NodeQueue queue(
+        CompareNodes{},
+        std::move(storage));
 
     for (const auto& entry : frequencies)
     {
