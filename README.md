@@ -20,6 +20,10 @@ file-compressor compress <input> [-o|--output <path>] [--force]
 file-compressor --help
 ```
 
+Run `file-compressor --help` (or `file-compressor -h`) for the complete
+command list, option descriptions, and examples. Help is also available for a
+specific command, for example `file-compressor compress --help`.
+
 If `-o` / `--output` is omitted, the output path is `<input>.huff`. If that
 output already exists, the CLI prompts before replacing it. Answer `y` or
 `yes` to confirm; any other answer cancels and preserves the existing file. Use

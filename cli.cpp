@@ -225,6 +225,13 @@ bool parseCliArguments(const std::vector<std::string>& arguments,
             }
             outputPathProvided = true;
         }
+        else if (parseOptions &&
+                 (argument == "-h" || argument == "--help"))
+        {
+            options = CliOptions();
+            options.command = CliCommand::Help;
+            return true;
+        }
         else if (parseOptions && argument == "--force")
         {
             if (forceProvided)
@@ -267,12 +274,24 @@ bool parseCliArguments(const std::vector<std::string>& arguments,
 void printCliUsage(std::ostream& output)
 {
     output << "Usage:\n"
-           << "  file-compressor compress <input> "
-              "[-o|--output <path>] [--force]\n"
-           << "  file-compressor --help\n\n"
-           << "If no output path is supplied, <input>.huff is used.\n"
-           << "Existing output files require confirmation; --force "
-              "overwrites without prompting.\n"
+           << "  file-compressor compress <input-file> "
+              "[-o|--output <output-file>] [--force]\n"
+           << "  file-compressor -h | --help\n\n"
+           << "Commands:\n"
+           << "  compress <input-file>  Compress a file using Huffman coding.\n\n"
+           << "Options:\n"
+           << "  -o, --output <path>    Set the output path. By default, "
+              "<input-file>.huff is used.\n"
+           << "  --force                Overwrite an existing output without "
+              "prompting.\n"
+           << "  -h, --help             Show this help message. May be used "
+              "with or without a command.\n\n"
+           << "Examples:\n"
+           << "  file-compressor compress report.txt\n"
+           << "  file-compressor compress report.txt -o archive.huff\n"
+           << "  file-compressor compress report.txt --force\n\n"
+           << "If the output already exists, the program asks for "
+              "confirmation unless --force is used.\n"
            << "Decompression is not available in this version."
            << std::endl;
 }

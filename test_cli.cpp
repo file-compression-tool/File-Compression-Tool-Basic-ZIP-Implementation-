@@ -79,6 +79,58 @@ namespace
                       "report decompression as unavailable");
     }
 
+    bool testHelpAndUsage()
+    {
+        const std::vector<std::vector<std::string> > helpArguments = {
+            std::vector<std::string>(),
+            std::vector<std::string>{"--help"},
+            std::vector<std::string>{"-h"},
+            std::vector<std::string>{"compress", "--help"},
+            std::vector<std::string>{"compress", "input.txt", "-h"}
+        };
+
+        for (std::size_t i = 0; i < helpArguments.size(); ++i)
+        {
+            std::ostringstream output;
+            std::ostringstream errors;
+            std::istringstream input;
+            const int result = runCli(
+                helpArguments[i], input, output, errors);
+
+            const std::string helpText = output.str();
+            if (!expect(result == 0, "return success for help invocation"))
+                return false;
+            if (!expect(errors.str().empty(),
+                        "write requested help to standard output"))
+                return false;
+            if (!expect(helpText.find("Usage:") != std::string::npos &&
+                            helpText.find("Commands:") != std::string::npos &&
+                            helpText.find("Options:") != std::string::npos &&
+                            helpText.find("Examples:") != std::string::npos,
+                        "include command, options, and examples in help"))
+                return false;
+            if (!expect(helpText.find("--output") != std::string::npos &&
+                            helpText.find("--force") != std::string::npos &&
+                            helpText.find("Decompression is not available") !=
+                                std::string::npos,
+                        "describe available options and unsupported decoding"))
+                return false;
+        }
+
+        std::ostringstream output;
+        std::ostringstream errors;
+        std::istringstream input;
+        const int result = runCli(
+            std::vector<std::string>{"unknown"},
+            input,
+            output,
+            errors);
+
+        return expect(result != 0, "return failure for unknown command") &&
+               expect(errors.str().find("Usage:") != std::string::npos,
+                      "include usage after command errors");
+    }
+
     bool testCompressionCommand()
     {
         const std::string inputPath = "cli_test_input.txt";
@@ -317,7 +369,8 @@ namespace
 
 int main()
 {
-    if (!testArgumentParsing() || !testCompressionCommand() ||
+    if (!testArgumentParsing() || !testHelpAndUsage() ||
+        !testCompressionCommand() ||
         !testEmptyInputStatistics() || !testOverwriteConfirmation() ||
         !testForceOverwrite())
         return 1;
