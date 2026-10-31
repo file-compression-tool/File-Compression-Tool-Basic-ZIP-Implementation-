@@ -29,11 +29,3 @@
 | Existing output file | Refuses to overwrite an existing file | PASS |
 
 
-Pending:
-- Unsupported file version
-- Incomplete header
-- Corrupted frequency table
-- Truncated payload
-- Invalid padding bits
-- Unexpected extra data
-- Existing output file
