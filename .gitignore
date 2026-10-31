@@ -67,3 +67,8 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# Generated compression test files
+*.huff
+*_out.txt
+binary_sample.bin
