@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <iterator>
 #include <map>
@@ -75,6 +76,21 @@ namespace
         return !input.bad();
     }
 
+    bool createCompressedBytes(
+        const std::vector<uint8_t>& data,
+        std::vector<uint8_t>& bytes)
+    {
+        const std::string path = "decoder_header_test.huff";
+
+        if (!compressTestData(data, path))
+            return false;
+
+        const bool success = readBytes(path, bytes);
+        std::remove(path.c_str());
+
+        return success;
+    }
+
     bool testRoundTrip(
         const std::vector<uint8_t>& original,
         const std::string& path,
@@ -117,20 +133,22 @@ namespace
                    description + ": preserve output on failure");
     }
 
-    bool createCompressedBytes(
-        const std::vector<uint8_t>& data,
-        std::vector<uint8_t>& bytes)
+    bool testPayloadCorruption(
+        const std::string& description,
+        const std::vector<uint8_t>& original,
+        const std::function<void(std::vector<uint8_t>&)>& corrupt)
     {
-        const std::string path = "decoder_header_test.huff";
+        std::vector<uint8_t> bytes;
 
-        if (!compressTestData(data, path))
+        if (!createCompressedBytes(original, bytes))
             return false;
 
-        const bool success = readBytes(path, bytes);
-        std::remove(path.c_str());
+        corrupt(bytes);
 
-        return success;
+        return expectCorruptedFileRejected(bytes, description);
     }
+
+    // Original round-trip tests
 
     bool testNormalText()
     {
@@ -170,6 +188,8 @@ namespace
             "decoder_binary_test.huff",
             "binary file containing all 256 byte values");
     }
+
+    // Header corruption tests
 
     bool testInvalidMagic()
     {
@@ -250,6 +270,57 @@ namespace
         return expectCorruptedFileRejected(
             bytes, "empty file with trailing data");
     }
+
+    // Payload corruption tests
+
+    bool testTruncatedPayload()
+    {
+        return testPayloadCorruption(
+            "truncated compressed payload",
+            {'A', 'B', 'A', 'B', 'A', 'B'},
+            [](std::vector<uint8_t>& bytes)
+            {
+                if (bytes.size() > 23)
+                    bytes.pop_back();
+            });
+    }
+
+    bool testIncorrectBitCount()
+    {
+        return testPayloadCorruption(
+            "incorrect compressed bit count",
+            {'A', 'B', 'A', 'B', 'A', 'B'},
+            [](std::vector<uint8_t>& bytes)
+            {
+                // Bit count occupies offsets 13 through 20.
+                ++bytes[13];
+            });
+    }
+
+    bool testNonZeroPaddingBits()
+    {
+        return testPayloadCorruption(
+            "non-zero padding bits",
+            {'A', 'B', 'A'},
+            [](std::vector<uint8_t>& bytes)
+            {
+                const std::size_t payloadOffset = 23 + 2 * 9;
+
+                if (bytes.size() > payloadOffset)
+                    bytes.back() |= 0x01;
+            });
+    }
+
+    bool testUnexpectedTrailingBytes()
+    {
+        return testPayloadCorruption(
+            "unexpected trailing bytes",
+            {'A', 'B', 'A', 'B', 'A', 'B'},
+            [](std::vector<uint8_t>& bytes)
+            {
+                bytes.push_back(0x00);
+            });
+    }
 }
 
 int main()
@@ -258,11 +329,13 @@ int main()
 
     std::cout << "Running decoder tests..." << std::endl;
 
+    // Round-trip tests
     passed &= expect(testNormalText(), "normal text test");
     passed &= expect(testEmptyFile(), "empty file test");
     passed &= expect(testSingleSymbol(), "single-symbol test");
     passed &= expect(testBinaryData(), "binary data test");
 
+    // Header validation tests
     passed &= expect(testInvalidMagic(), "invalid magic test");
     passed &= expect(testUnsupportedVersion(), "unsupported version test");
     passed &= expect(testTruncatedHeader(), "truncated header test");
@@ -271,6 +344,14 @@ int main()
     passed &= expect(
         testEmptyFileWithTrailingData(),
         "empty file trailing data test");
+
+    // Payload validation tests
+    passed &= expect(testTruncatedPayload(), "truncated payload test");
+    passed &= expect(testIncorrectBitCount(), "incorrect bit count test");
+    passed &= expect(testNonZeroPaddingBits(), "non-zero padding test");
+    passed &= expect(
+        testUnexpectedTrailingBytes(),
+        "unexpected trailing bytes test");
 
     if (!passed)
     {
