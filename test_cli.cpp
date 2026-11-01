@@ -19,6 +19,62 @@ namespace
         return condition;
     }
 
+    bool readFileContents(
+        const std::string& path,
+        std::string& contents)
+    {
+        std::ifstream file(path.c_str(), std::ios::binary);
+
+        if (!file.is_open())
+            return false;
+
+        contents.assign(
+            std::istreambuf_iterator<char>(file),
+            std::istreambuf_iterator<char>());
+
+        return !file.bad();
+    }
+
+    bool createCompressedFixture(
+        const std::string& inputPath,
+        const std::string& compressedPath,
+        const std::string& original)
+    {
+        std::remove(inputPath.c_str());
+        std::remove(compressedPath.c_str());
+
+        {
+            std::ofstream file(inputPath.c_str(), std::ios::binary);
+
+            if (!file.is_open())
+                return false;
+
+            if (!original.empty())
+            {
+                file.write(
+                    original.data(),
+                    static_cast<std::streamsize>(original.size()));
+            }
+
+            if (!file)
+                return false;
+        }
+
+        std::ostringstream output;
+        std::ostringstream errors;
+        std::istringstream input;
+
+        const int result = runCli(
+            std::vector<std::string>{
+                "compress", inputPath, "-o", compressedPath
+            },
+            input,
+            output,
+            errors);
+
+        return result == 0 && errors.str().empty();
+    }
+
     bool testArgumentParsing()
     {
         CliOptions options;
@@ -297,20 +353,14 @@ namespace
             rejectedOutput,
             rejectedErrors);
 
-        std::ifstream preservedFile(outputPath.c_str(), std::ios::binary);
-
         std::string preserved;
-
-        preserved.assign(
-            std::istreambuf_iterator<char>(preservedFile),
-            std::istreambuf_iterator<char>());
-
-        preservedFile.close();
+        const bool readPreserved =
+            readFileContents(outputPath, preserved);
 
         if (!expect(rejected != 0, "cancel unconfirmed overwrite"))
             return false;
 
-        if (!expect(preserved == "keep",
+        if (!expect(readPreserved && preserved == "keep",
                     "preserve existing file after declining"))
             return false;
 
@@ -420,7 +470,6 @@ namespace
                       "do not report errors after forced overwrite");
     }
 
-    // Decompression round-trip test
     bool testDecompressionCommand()
     {
         const std::string inputPath = "cli_decompress_input.txt";
@@ -476,26 +525,277 @@ namespace
             decompressOutput,
             decompressErrors);
 
-        std::ifstream restoredFile(restoredPath, std::ios::binary);
-
-        // Curly braces fix the C++ vexing parse issue.
-        std::string restored{
-            std::istreambuf_iterator<char>(restoredFile),
-            std::istreambuf_iterator<char>()
-        };
-
-        restoredFile.close();
+        std::string restored;
+        const bool readRestored =
+            readFileContents(restoredPath, restored);
 
         const bool success =
             expect(decompressResult == 0,
                    "decompress through CLI") &&
-            expect(restored == original,
+            expect(readRestored && restored == original,
                    "restore exact original content") &&
             expect(decompressOutput.str().find(
                        "Decompression successful.") != std::string::npos,
                    "display decompression success") &&
             expect(decompressErrors.str().empty(),
                    "do not report decompression errors");
+
+        std::remove(inputPath.c_str());
+        std::remove(compressedPath.c_str());
+        std::remove(restoredPath.c_str());
+
+        return success;
+    }
+
+    // Test decompression of an empty file.
+    bool testEmptyFileDecompression()
+    {
+        const std::string inputPath = "cli_empty_input";
+        const std::string compressedPath = "cli_empty_input.huff";
+        const std::string restoredPath = "cli_empty_restored";
+
+        const bool compressed =
+            createCompressedFixture(inputPath, compressedPath, "");
+
+        if (!expect(compressed, "prepare empty compressed file"))
+            return false;
+
+        std::ostringstream output;
+        std::ostringstream errors;
+        std::istringstream input;
+
+        const int result = runCli(
+            std::vector<std::string>{
+                "decompress", compressedPath, "-o", restoredPath
+            },
+            input,
+            output,
+            errors);
+
+        std::string restored;
+        const bool readRestored =
+            readFileContents(restoredPath, restored);
+
+        const bool success =
+            expect(result == 0, "decompress empty file") &&
+            expect(readRestored && restored.empty(),
+                   "restore an empty output file") &&
+            expect(output.str().find("Decompressed size: 0 bytes") !=
+                       std::string::npos,
+                   "report zero decompressed bytes") &&
+            expect(errors.str().empty(),
+                   "do not report errors for empty decompression");
+
+        std::remove(inputPath.c_str());
+        std::remove(compressedPath.c_str());
+        std::remove(restoredPath.c_str());
+
+        return success;
+    }
+
+    // Test all possible byte values through the CLI.
+    bool testBinaryFileRoundTrip()
+    {
+        const std::string inputPath = "cli_binary_input";
+        const std::string compressedPath = "cli_binary_input.huff";
+        const std::string restoredPath = "cli_binary_restored";
+
+        std::string original;
+
+        for (int value = 0; value < 256; ++value)
+            original.push_back(static_cast<char>(value));
+
+        const bool compressed =
+            createCompressedFixture(inputPath, compressedPath, original);
+
+        if (!expect(compressed, "prepare binary compressed file"))
+            return false;
+
+        std::ostringstream output;
+        std::ostringstream errors;
+        std::istringstream input;
+
+        const int result = runCli(
+            std::vector<std::string>{
+                "decompress", compressedPath, "-o", restoredPath
+            },
+            input,
+            output,
+            errors);
+
+        std::string restored;
+        const bool readRestored =
+            readFileContents(restoredPath, restored);
+
+        const bool success =
+            expect(result == 0, "decompress binary file through CLI") &&
+            expect(readRestored && restored == original,
+                   "restore all 256 byte values exactly") &&
+            expect(errors.str().empty(),
+                   "do not report errors for binary decompression");
+
+        std::remove(inputPath.c_str());
+        std::remove(compressedPath.c_str());
+        std::remove(restoredPath.c_str());
+
+        return success;
+    }
+
+    // Test rejection of an invalid compressed file.
+    bool testInvalidCompressedFile()
+    {
+        const std::string invalidPath = "cli_invalid_input.huff";
+        const std::string outputPath = "cli_invalid_restored";
+
+        std::remove(invalidPath.c_str());
+        std::remove(outputPath.c_str());
+
+        {
+            std::ofstream file(invalidPath.c_str(), std::ios::binary);
+
+            file << "This is not a valid HUFF file";
+
+            if (!file)
+                return expect(false, "create invalid compressed fixture");
+        }
+
+        std::ostringstream output;
+        std::ostringstream errors;
+        std::istringstream input;
+
+        const int result = runCli(
+            std::vector<std::string>{
+                "decompress", invalidPath, "-o", outputPath
+            },
+            input,
+            output,
+            errors);
+
+        std::ifstream restored(outputPath.c_str(), std::ios::binary);
+        const bool outputWasNotCreated = !restored.is_open();
+
+        const bool success =
+            expect(result != 0, "reject invalid compressed file") &&
+            expect(errors.str().find("Invalid or unreadable compressed file") !=
+                       std::string::npos,
+                   "report invalid compressed input") &&
+            expect(outputWasNotCreated,
+                   "do not create output for invalid compressed input");
+
+        std::remove(invalidPath.c_str());
+        std::remove(outputPath.c_str());
+
+        return success;
+    }
+
+    // Test that declining decompression overwrite preserves existing data.
+    bool testDecompressionOverwriteDeclined()
+    {
+        const std::string inputPath = "cli_overwrite_input";
+        const std::string compressedPath = "cli_overwrite_input.huff";
+        const std::string restoredPath = "cli_overwrite_restored";
+
+        const std::string original = "New decompressed content";
+
+        const bool compressed =
+            createCompressedFixture(inputPath, compressedPath, original);
+
+        if (!expect(compressed, "prepare overwrite compressed fixture"))
+            return false;
+
+        {
+            std::ofstream existing(restoredPath.c_str(), std::ios::binary);
+            existing << "keep existing content";
+
+            if (!existing)
+                return expect(false, "create existing decompression output");
+        }
+
+        std::ostringstream output;
+        std::ostringstream errors;
+        std::istringstream input("n\n");
+
+        const int result = runCli(
+            std::vector<std::string>{
+                "decompress", compressedPath, "-o", restoredPath
+            },
+            input,
+            output,
+            errors);
+
+        std::string preserved;
+        const bool readPreserved =
+            readFileContents(restoredPath, preserved);
+
+        const bool success =
+            expect(result != 0, "cancel decompression overwrite") &&
+            expect(readPreserved &&
+                       preserved == "keep existing content",
+                   "preserve existing output after declining") &&
+            expect(output.str().find("Overwrite? [y/N]:") !=
+                       std::string::npos,
+                   "prompt before decompression overwrite") &&
+            expect(errors.str().find(
+                       "existing output was not changed.") !=
+                       std::string::npos,
+                   "explain declined decompression overwrite");
+
+        std::remove(inputPath.c_str());
+        std::remove(compressedPath.c_str());
+        std::remove(restoredPath.c_str());
+
+        return success;
+    }
+
+    // Test that --force replaces an existing decompression output.
+    bool testDecompressionForceOverwrite()
+    {
+        const std::string inputPath = "cli_force_input";
+        const std::string compressedPath = "cli_force_input.huff";
+        const std::string restoredPath = "cli_force_restored";
+
+        const std::string original = "Forced decompression content";
+
+        const bool compressed =
+            createCompressedFixture(inputPath, compressedPath, original);
+
+        if (!expect(compressed, "prepare force decompression fixture"))
+            return false;
+
+        {
+            std::ofstream existing(restoredPath.c_str(), std::ios::binary);
+            existing << "old content";
+
+            if (!existing)
+                return expect(false, "create force decompression output");
+        }
+
+        std::ostringstream output;
+        std::ostringstream errors;
+        std::istringstream input;
+
+        const int result = runCli(
+            std::vector<std::string>{
+                "decompress", compressedPath,
+                "-o", restoredPath, "--force"
+            },
+            input,
+            output,
+            errors);
+
+        std::string restored;
+        const bool readRestored =
+            readFileContents(restoredPath, restored);
+
+        const bool success =
+            expect(result == 0, "allow forced decompression overwrite") &&
+            expect(readRestored && restored == original,
+                   "replace existing output with decoded content") &&
+            expect(output.str().find("Overwrite? [y/N]:") ==
+                       std::string::npos,
+                   "skip overwrite prompt with decompression --force") &&
+            expect(errors.str().empty(),
+                   "do not report errors after forced decompression");
 
         std::remove(inputPath.c_str());
         std::remove(compressedPath.c_str());
@@ -513,7 +813,12 @@ int main()
         !testEmptyInputStatistics() ||
         !testOverwriteConfirmation() ||
         !testForceOverwrite() ||
-        !testDecompressionCommand())
+        !testDecompressionCommand() ||
+        !testEmptyFileDecompression() ||
+        !testBinaryFileRoundTrip() ||
+        !testInvalidCompressedFile() ||
+        !testDecompressionOverwriteDeclined() ||
+        !testDecompressionForceOverwrite())
     {
         return 1;
     }
