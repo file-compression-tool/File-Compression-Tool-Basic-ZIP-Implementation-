@@ -1,3 +1,4 @@
+
 #include "cli.hpp"
 
 #include <cstdio>
@@ -5,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <iterator>
 #include <vector>
 
 namespace
@@ -13,6 +15,7 @@ namespace
     {
         if (!condition)
             std::cerr << "FAILED: " << description << std::endl;
+
         return condition;
     }
 
@@ -27,8 +30,10 @@ namespace
             },
             options,
             errorMessage);
+
         if (!expect(explicitOutput, "parse explicit output path"))
             return false;
+
         if (!expect(options.command == CliCommand::Compress &&
                         options.inputPath == "input.txt" &&
                         options.outputPath == "result.huff",
@@ -39,8 +44,10 @@ namespace
             std::vector<std::string>{"compress", "input.txt"},
             options,
             errorMessage);
+
         if (!expect(defaultOutput, "parse default output path"))
             return false;
+
         if (!expect(options.outputPath == "input.txt.huff",
                     "derive default output path"))
             return false;
@@ -51,6 +58,7 @@ namespace
             },
             options,
             errorMessage);
+
         if (!expect(parsedForce && options.forceOverwrite,
                     "parse deliberate overwrite option"))
             return false;
@@ -59,24 +67,31 @@ namespace
             std::vector<std::string>{"compress"},
             options,
             errorMessage);
+
         if (!expect(rejectedMissingInput, "reject missing input path"))
             return false;
 
         const bool rejectedUnknownOption = !parseCliArguments(
-            std::vector<std::string>{"compress", "input.txt", "--unknown"},
+            std::vector<std::string>{
+                "compress", "input.txt", "--unknown"
+            },
             options,
             errorMessage);
+
         if (!expect(rejectedUnknownOption, "reject unknown option"))
             return false;
 
-        const bool rejectedDecompression = !parseCliArguments(
+        const bool acceptedDecompression = parseCliArguments(
             std::vector<std::string>{"decompress", "input.huff"},
             options,
             errorMessage);
-        return expect(rejectedDecompression &&
-                          errorMessage.find("not available") !=
-                              std::string::npos,
-                      "report decompression as unavailable");
+
+        return expect(
+            acceptedDecompression &&
+            options.command == CliCommand::Decompress &&
+            options.inputPath == "input.huff" &&
+            options.outputPath == "input",
+            "accept decompression command");
     }
 
     bool testHelpAndUsage()
@@ -94,32 +109,37 @@ namespace
             std::ostringstream output;
             std::ostringstream errors;
             std::istringstream input;
+
             const int result = runCli(
                 helpArguments[i], input, output, errors);
 
             const std::string helpText = output.str();
+
             if (!expect(result == 0, "return success for help invocation"))
                 return false;
+
             if (!expect(errors.str().empty(),
                         "write requested help to standard output"))
                 return false;
+
             if (!expect(helpText.find("Usage:") != std::string::npos &&
                             helpText.find("Commands:") != std::string::npos &&
                             helpText.find("Options:") != std::string::npos &&
                             helpText.find("Examples:") != std::string::npos,
                         "include command, options, and examples in help"))
                 return false;
+
             if (!expect(helpText.find("--output") != std::string::npos &&
                             helpText.find("--force") != std::string::npos &&
-                            helpText.find("Decompression is not available") !=
-                                std::string::npos,
-                        "describe available options and unsupported decoding"))
+                            helpText.find("decompress") != std::string::npos,
+                        "describe compression and decompression commands"))
                 return false;
         }
 
         std::ostringstream output;
         std::ostringstream errors;
         std::istringstream input;
+
         const int result = runCli(
             std::vector<std::string>{"unknown"},
             input,
@@ -135,12 +155,14 @@ namespace
     {
         const std::string inputPath = "cli_test_input.txt";
         const std::string outputPath = "cli_test_output.huff";
+
         std::remove(inputPath.c_str());
         std::remove(outputPath.c_str());
 
         {
             std::ofstream input(inputPath.c_str(), std::ios::binary);
             input << "CLI test input";
+
             if (!input)
                 return expect(false, "create CLI input fixture");
         }
@@ -148,6 +170,7 @@ namespace
         std::ostringstream output;
         std::ostringstream errors;
         std::istringstream input;
+
         const int result = runCli(
             std::vector<std::string>{
                 "compress", inputPath, "-o", outputPath
@@ -157,15 +180,19 @@ namespace
             errors);
 
         std::ifstream compressed(outputPath.c_str(), std::ios::binary);
+
         char magic[4] = {};
         compressed.read(magic, sizeof(magic));
+
         const bool validOutput =
             compressed.gcount() == 4 &&
             magic[0] == 'H' && magic[1] == 'U' &&
             magic[2] == 'F' && magic[3] == 'F';
+
         compressed.close();
 
         const std::string outputText = output.str();
+
         std::remove(inputPath.c_str());
         std::remove(outputPath.c_str());
 
@@ -191,11 +218,13 @@ namespace
     {
         const std::string inputPath = "cli_test_empty_input";
         const std::string outputPath = "cli_test_empty_output.huff";
+
         std::remove(inputPath.c_str());
         std::remove(outputPath.c_str());
 
         {
             std::ofstream input(inputPath.c_str(), std::ios::binary);
+
             if (!input)
                 return expect(false, "create empty CLI input fixture");
         }
@@ -203,6 +232,7 @@ namespace
         std::ostringstream output;
         std::ostringstream errors;
         std::istringstream input;
+
         const int result = runCli(
             std::vector<std::string>{
                 "compress", inputPath, "-o", outputPath
@@ -212,6 +242,7 @@ namespace
             errors);
 
         const std::string outputText = output.str();
+
         std::remove(inputPath.c_str());
         std::remove(outputPath.c_str());
 
@@ -234,12 +265,14 @@ namespace
     {
         const std::string inputPath = "cli_test_overwrite_input";
         const std::string outputPath = "cli_test_overwrite_output.huff";
+
         std::remove(inputPath.c_str());
         std::remove(outputPath.c_str());
 
         {
             std::ofstream input(inputPath.c_str(), std::ios::binary);
             input << "overwrite test";
+
             if (!input)
                 return expect(false, "create overwrite input fixture");
         }
@@ -247,6 +280,7 @@ namespace
         {
             std::ofstream existing(outputPath.c_str(), std::ios::binary);
             existing << "keep";
+
             if (!existing)
                 return expect(false, "create existing output fixture");
         }
@@ -254,6 +288,7 @@ namespace
         std::ostringstream rejectedOutput;
         std::ostringstream rejectedErrors;
         std::istringstream noAnswer("n\n");
+
         const int rejected = runCli(
             std::vector<std::string>{
                 "compress", inputPath, "-o", outputPath
@@ -263,21 +298,27 @@ namespace
             rejectedErrors);
 
         std::ifstream preservedFile(outputPath.c_str(), std::ios::binary);
+
         std::string preserved;
+
         preserved.assign(
             std::istreambuf_iterator<char>(preservedFile),
             std::istreambuf_iterator<char>());
+
         preservedFile.close();
 
         if (!expect(rejected != 0, "cancel unconfirmed overwrite"))
             return false;
+
         if (!expect(preserved == "keep",
                     "preserve existing file after declining"))
             return false;
+
         if (!expect(rejectedOutput.str().find("Overwrite? [y/N]:") !=
                         std::string::npos,
                     "prompt before replacing existing output"))
             return false;
+
         if (!expect(rejectedErrors.str().find(
                         "existing output was not changed.") !=
                         std::string::npos,
@@ -287,6 +328,7 @@ namespace
         std::ostringstream confirmedOutput;
         std::ostringstream confirmedErrors;
         std::istringstream yesAnswer("YES\n");
+
         const int confirmed = runCli(
             std::vector<std::string>{
                 "compress", inputPath, "-o", outputPath
@@ -296,12 +338,15 @@ namespace
             confirmedErrors);
 
         std::ifstream replacedFile(outputPath.c_str(), std::ios::binary);
+
         char magic[4] = {};
         replacedFile.read(magic, sizeof(magic));
+
         const bool replaced =
             replacedFile.gcount() == 4 &&
             magic[0] == 'H' && magic[1] == 'U' &&
             magic[2] == 'F' && magic[3] == 'F';
+
         replacedFile.close();
 
         std::remove(inputPath.c_str());
@@ -317,18 +362,22 @@ namespace
     {
         const std::string inputPath = "cli_test_force_input";
         const std::string outputPath = "cli_test_force_output.huff";
+
         std::remove(inputPath.c_str());
         std::remove(outputPath.c_str());
 
         {
             std::ofstream input(inputPath.c_str(), std::ios::binary);
             input << "force test";
+
             if (!input)
                 return expect(false, "create force input fixture");
         }
+
         {
             std::ofstream existing(outputPath.c_str(), std::ios::binary);
             existing << "keep";
+
             if (!existing)
                 return expect(false, "create force output fixture");
         }
@@ -336,6 +385,7 @@ namespace
         std::ostringstream output;
         std::ostringstream errors;
         std::istringstream noInput;
+
         const int result = runCli(
             std::vector<std::string>{
                 "compress", inputPath, "-o", outputPath, "--force"
@@ -343,15 +393,19 @@ namespace
             noInput,
             output,
             errors);
+
         const std::string outputText = output.str();
 
         std::ifstream replacedFile(outputPath.c_str(), std::ios::binary);
+
         char magic[4] = {};
         replacedFile.read(magic, sizeof(magic));
+
         const bool replaced =
             replacedFile.gcount() == 4 &&
             magic[0] == 'H' && magic[1] == 'U' &&
             magic[2] == 'F' && magic[3] == 'F';
+
         replacedFile.close();
 
         std::remove(inputPath.c_str());
@@ -365,16 +419,106 @@ namespace
                expect(errors.str().empty(),
                       "do not report errors after forced overwrite");
     }
+
+    // Decompression round-trip test
+    bool testDecompressionCommand()
+    {
+        const std::string inputPath = "cli_decompress_input.txt";
+        const std::string compressedPath = "cli_decompress_input.huff";
+        const std::string restoredPath = "cli_decompress_restored.txt";
+
+        std::remove(inputPath.c_str());
+        std::remove(compressedPath.c_str());
+        std::remove(restoredPath.c_str());
+
+        const std::string original = "Huffman CLI decompression test";
+
+        {
+            std::ofstream file(inputPath.c_str(), std::ios::binary);
+
+            file.write(
+                original.data(),
+                static_cast<std::streamsize>(original.size()));
+
+            if (!file)
+                return expect(false, "create decompression test input");
+        }
+
+        std::ostringstream compressOutput;
+        std::ostringstream compressErrors;
+        std::istringstream compressInput;
+
+        const int compressResult = runCli(
+            std::vector<std::string>{
+                "compress", inputPath, "-o", compressedPath
+            },
+            compressInput,
+            compressOutput,
+            compressErrors);
+
+        if (!expect(compressResult == 0,
+                    "prepare compressed file for decompression test"))
+        {
+            std::remove(inputPath.c_str());
+            std::remove(compressedPath.c_str());
+            return false;
+        }
+
+        std::ostringstream decompressOutput;
+        std::ostringstream decompressErrors;
+        std::istringstream decompressInput;
+
+        const int decompressResult = runCli(
+            std::vector<std::string>{
+                "decompress", compressedPath, "-o", restoredPath
+            },
+            decompressInput,
+            decompressOutput,
+            decompressErrors);
+
+        std::ifstream restoredFile(restoredPath, std::ios::binary);
+
+        // Curly braces fix the C++ vexing parse issue.
+        std::string restored{
+            std::istreambuf_iterator<char>(restoredFile),
+            std::istreambuf_iterator<char>()
+        };
+
+        restoredFile.close();
+
+        const bool success =
+            expect(decompressResult == 0,
+                   "decompress through CLI") &&
+            expect(restored == original,
+                   "restore exact original content") &&
+            expect(decompressOutput.str().find(
+                       "Decompression successful.") != std::string::npos,
+                   "display decompression success") &&
+            expect(decompressErrors.str().empty(),
+                   "do not report decompression errors");
+
+        std::remove(inputPath.c_str());
+        std::remove(compressedPath.c_str());
+        std::remove(restoredPath.c_str());
+
+        return success;
+    }
 }
 
 int main()
 {
-    if (!testArgumentParsing() || !testHelpAndUsage() ||
+    if (!testArgumentParsing() ||
+        !testHelpAndUsage() ||
         !testCompressionCommand() ||
-        !testEmptyInputStatistics() || !testOverwriteConfirmation() ||
-        !testForceOverwrite())
+        !testEmptyInputStatistics() ||
+        !testOverwriteConfirmation() ||
+        !testForceOverwrite() ||
+        !testDecompressionCommand())
+    {
         return 1;
+    }
 
     std::cout << "All CLI tests passed." << std::endl;
+
     return 0;
 }

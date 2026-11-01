@@ -8,7 +8,8 @@
 enum class CliCommand
 {
     Help,
-    Compress
+    Compress,
+    Decompress
 };
 
 struct CliOptions
