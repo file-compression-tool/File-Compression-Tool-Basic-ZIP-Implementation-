@@ -189,6 +189,48 @@ namespace
             "binary file containing all 256 byte values");
     }
 
+    // Huffman tree reconstruction tests
+
+    bool testEqualFrequencyReconstruction()
+    {
+        return testRoundTrip(
+            {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'},
+            "decoder_equal_frequency.huff",
+            "equal-frequency reconstruction");
+    }
+
+    bool testUnequalFrequencyReconstruction()
+    {
+        std::vector<uint8_t> data;
+
+        data.insert(data.end(), 50, 'A');
+        data.insert(data.end(), 25, 'B');
+        data.insert(data.end(), 12, 'C');
+        data.insert(data.end(), 6, 'D');
+        data.insert(data.end(), 3, 'E');
+
+        return testRoundTrip(
+            data,
+            "decoder_unequal_frequency.huff",
+            "unequal-frequency reconstruction");
+    }
+
+    bool testRepeatedFrequencyPatterns()
+    {
+        std::vector<uint8_t> data;
+
+        data.insert(data.end(), 10, 'A');
+        data.insert(data.end(), 10, 'B');
+        data.insert(data.end(), 10, 'C');
+        data.insert(data.end(), 10, 'D');
+        data.insert(data.end(), 10, 'E');
+
+        return testRoundTrip(
+            data,
+            "decoder_repeated_frequency.huff",
+            "repeated-frequency reconstruction");
+    }
+
     // Header corruption tests
 
     bool testInvalidMagic()
@@ -334,6 +376,19 @@ int main()
     passed &= expect(testEmptyFile(), "empty file test");
     passed &= expect(testSingleSymbol(), "single-symbol test");
     passed &= expect(testBinaryData(), "binary data test");
+
+    // Huffman tree reconstruction tests
+    passed &= expect(
+        testEqualFrequencyReconstruction(),
+        "equal-frequency reconstruction test");
+
+    passed &= expect(
+        testUnequalFrequencyReconstruction(),
+        "unequal-frequency reconstruction test");
+
+    passed &= expect(
+        testRepeatedFrequencyPatterns(),
+        "repeated-frequency reconstruction test");
 
     // Header validation tests
     passed &= expect(testInvalidMagic(), "invalid magic test");
