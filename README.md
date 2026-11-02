@@ -1,36 +1,69 @@
 # File Compression Tool
 
-This command-line tool compresses files into the project's version 1 `.huff`
-format using Huffman coding.
+This command-line tool compresses and decompresses files using Huffman coding
+and the project's version 1 `.huff` format.
 
 ## Build
 
 From the repository root, build with a C++11-compatible compiler:
 
 ```sh
-g++ -std=c++11 main.cpp cli.cpp file_reader.cpp frequency.cpp huffman_tree.cpp encoder.cpp -o file-compressor
+g++ -std=c++11 main.cpp cli.cpp file_reader.cpp frequency.cpp huffman_tree.cpp encoder.cpp decoder.cpp -o file-compressor
 ```
 
-On Windows, the resulting executable can be named `file-compressor.exe`.
+On Windows, name the executable `file-compressor.exe` and run it as
+`.\file-compressor.exe`.
 
 ## Usage
 
 ```text
-file-compressor compress <input> [-o|--output <path>] [--force]
+file-compressor compress <input-file> [-o|--output <output-file>] [--force]
+file-compressor decompress <input-file> [-o|--output <output-file>] [--force]
+file-compressor -h | --help
+```
+
+Examples:
+
+```sh
+file-compressor compress report.txt
+file-compressor compress report.txt --output archive.huff
+file-compressor decompress archive.huff
+file-compressor decompress archive.huff -o restored.txt
 file-compressor --help
 ```
 
-Run `file-compressor --help` (or `file-compressor -h`) for the complete
-command list, option descriptions, and examples. Help is also available for a
-specific command, for example `file-compressor compress --help`.
+Run `file-compressor --help` or `file-compressor -h` for command descriptions,
+options, and more examples. Help is also available after a command, for example
+`file-compressor compress --help`.
 
-If `-o` / `--output` is omitted, the output path is `<input>.huff`. If that
-output already exists, the CLI prompts before replacing it. Answer `y` or
-`yes` to confirm; any other answer cancels and preserves the existing file. Use
-`--force` to deliberately overwrite without a prompt.
-On successful compression, the CLI displays the original size, compressed
-size, and the original-to-compressed ratio. The ratio is reported as `N/A` for
-an empty input.
+## Output paths and overwrite protection
 
-Decompression is not available yet. It depends on implementation of
-FCT-F-010 through FCT-F-014.
+The default compressed output path is `<input-file>.huff`. For decompression,
+the default output removes a trailing `.huff` extension; otherwise it appends
+`.out`. Use `-o` or `--output` to choose another output path.
+
+If the output already exists, the CLI asks for confirmation. Enter `y` or
+`yes` to replace it; any other answer cancels and preserves the existing file.
+Use `--force` to deliberately overwrite without prompting.
+
+## Results and errors
+
+After successful compression, the CLI reports the original size, compressed
+size, and original-to-compressed ratio. The ratio is `N/A` for an empty input.
+Successful decompression reports the restored size and output path.
+
+Missing or unreadable inputs, invalid compressed files, unknown commands,
+invalid options, and output write failures report an error and return a
+non-zero exit status. Argument errors also print usage information.
+
+## Tests
+
+Build and run the CLI tests from the repository root:
+
+```sh
+g++ -std=c++11 test_cli.cpp cli.cpp file_reader.cpp frequency.cpp huffman_tree.cpp encoder.cpp decoder.cpp -o test_cli
+./test_cli
+```
+
+On Windows, run `.\test_cli.exe` after building the test executable with
+`-o test_cli.exe`.
