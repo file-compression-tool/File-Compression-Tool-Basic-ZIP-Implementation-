@@ -1,0 +1,42 @@
+name: C++ CI
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build application
+        run: >
+          g++ -std=c++11 -Wall -Wextra
+          main.cpp cli.cpp file_reader.cpp frequency.cpp
+          huffman_tree.cpp encoder.cpp decoder.cpp
+          -o file-compressor
+
+      - name: Build CLI tests
+        run: >
+          g++ -std=c++11 -Wall -Wextra
+          test_cli.cpp cli.cpp file_reader.cpp frequency.cpp
+          huffman_tree.cpp encoder.cpp decoder.cpp
+          -o test_cli
+
+      - name: Run CLI tests
+        run: ./test_cli
+
+      - name: Upload release binary
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: file-compressor-linux
+          path: file-compressor
