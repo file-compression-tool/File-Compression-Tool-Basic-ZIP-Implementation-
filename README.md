@@ -36,6 +36,16 @@ Run `file-compressor --help` or `file-compressor -h` for command descriptions,
 options, and more examples. Help is also available after a command, for example
 `file-compressor compress --help`.
 
+
+## How It Works
+
+The tool uses Huffman coding to compress files.
+
+- **Compression:** Reads the input file, calculates character frequencies, builds a Huffman tree, and encodes the data into a `.huff` file.
+- **Decompression:** Reads the `.huff` file, reconstructs the Huffman tree using the stored frequency information, and restores the original file.
+- **Validation:** Checks the compressed file header, metadata, encoded data, and output size before accepting the decompressed result.
+
+
 ## Output paths and overwrite protection
 
 The default compressed output path is `<input-file>.huff`. For decompression,
