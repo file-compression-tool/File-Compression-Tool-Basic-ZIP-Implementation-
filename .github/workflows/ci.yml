@@ -9,7 +9,7 @@ on:
     branches: [main, master]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-and-test:
@@ -41,9 +41,41 @@ jobs:
       - name: Run CLI tests
         run: ./test_cli
 
-      - name: Upload release binary
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Build module test suites
+        run: |
+          g++ -std=c++11 -Wall -Wextra test_frequency.cpp frequency.cpp file_reader.cpp huffman_tree.cpp -o test_frequency
+          g++ -std=c++11 -Wall -Wextra test_huffman_tree.cpp huffman_tree.cpp -o test_huffman_tree
+          g++ -std=c++11 -Wall -Wextra test_encoder.cpp encoder.cpp -o test_encoder
+          g++ -std=c++11 -Wall -Wextra test_decoder.cpp decoder.cpp encoder.cpp huffman_tree.cpp -o test_decoder
+          g++ -std=c++11 -Wall -Wextra test_output_writer.cpp output_writer.cpp -o test_output_writer
+          g++ -std=c++11 -Wall -Wextra test_decompressor.cpp decompressor.cpp encoder.cpp huffman_tree.cpp -o test_decompressor
+          g++ -std=c++11 -Wall -Wextra test_reader.cpp file_reader.cpp -o test_reader
+          g++ -std=c++11 -Wall -Wextra test_integration.cpp file_reader.cpp frequency.cpp huffman_tree.cpp encoder.cpp -o test_integration
+
+      - name: Run module and integration tests
+        run: |
+          ./test_frequency
+          ./test_huffman_tree
+          ./test_encoder
+          ./test_decoder
+          ./test_output_writer
+          ./test_decompressor
+          printf 'CI integration fixture for file-reader and encoder tests.\n' > sample.txt
+          trap 'rm -f sample.txt integration_test.huff' EXIT
+          ./test_reader
+          ./test_integration
+
+      - name: Upload Linux executable
         uses: actions/upload-artifact@v4
         with:
           name: file-compressor-linux
           path: file-compressor
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" file-compressor \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

@@ -103,6 +103,7 @@ Milestones:
 - Test Logs - CLI output screenshots or text logs capturing pass/fail results for each test case. 
 - Defect Log - GitHub Issues raised for each failed test, with steps to reproduce and severity. 
 - Test Summary Report - Final report summarising % passed/failed, open defects, requirement coverage, and sign-off recommendation. 
+- Latest execution results: [QA Test Execution Report](./docs/QA_TEST_REPORT.md) (2026-11-03), including passed suites and outstanding validation.
 - RTM (updated) - RTM with Status column filled (P/N/A) for every FCT-F, FCT-NF, and FCT-SR requirement.
 
 
@@ -166,6 +167,5 @@ Metrics collected:
 - Defect aging (time open)
 - Requirement coverage (% of RTM rows with a passing test)
 - Byte-for-byte integrity pass rate across the file corpus
-
 
 
