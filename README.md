@@ -94,3 +94,6 @@ g++ -std=c++11 test_cli.cpp cli.cpp file_reader.cpp frequency.cpp huffman_tree.c
 
 On Windows, run `.\test_cli.exe` after building the test executable with
 `-o test_cli.exe`.
+
+g++ -std=c++11 test_decompressor.cpp decompressor.cpp -o test_decompressor
+./test_decompressor
