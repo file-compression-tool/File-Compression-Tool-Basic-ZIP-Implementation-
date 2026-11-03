@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <queue>
 #include <stdexcept>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -100,6 +101,7 @@ HuffmanCodeMap generateHuffmanCodes(
     pending.push_back({root, ""});
 
     std::array<bool, 256> visitedSymbols = {};
+    std::unordered_set<const HuffmanNode*> visitedNodes;
 
     while (!pending.empty())
     {
@@ -110,6 +112,13 @@ HuffmanCodeMap generateHuffmanCodes(
         {
             throw std::invalid_argument(
                 "Huffman tree contains a null node.");
+        }
+
+        // Detect cycles and nodes shared by multiple parents.
+        if (!visitedNodes.insert(current.node.get()).second)
+        {
+            throw std::invalid_argument(
+                "Huffman tree contains a cycle or shared node.");
         }
 
         if (current.node->isLeaf())
