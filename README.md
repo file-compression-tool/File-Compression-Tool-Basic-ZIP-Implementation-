@@ -46,6 +46,23 @@ The tool uses Huffman coding to compress files.
 - **Validation:** Checks the compressed file header, metadata, encoded data, and output size before accepting the decompressed result.
 
 
+## Compressed File Format
+
+The project uses a custom version 1 `.huff` format.
+
+The file contains:
+
+1. Magic signature (`HUFF`) to identify compressed files.
+2. Format version.
+3. Original file size.
+4. Encoded bit count.
+5. Symbol frequency table.
+6. Huffman-encoded payload.
+
+This metadata allows the decompressor to reconstruct the Huffman tree and restore the original content.
+
+
+
 ## Output paths and overwrite protection
 
 The default compressed output path is `<input-file>.huff`. For decompression,
