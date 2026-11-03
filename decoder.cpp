@@ -119,29 +119,79 @@ namespace
         return true;
     }
 
+    // Calculate the expected bit count directly from Huffman tree depths.
     bool validateBitCount(
+        const std::shared_ptr<HuffmanNode>& root,
         const std::map<std::uint8_t, std::uint64_t>& frequencies,
-        const HuffmanCodeMap& codes,
         std::uint64_t bitCount)
     {
-        std::uint64_t expectedBits = 0;
+        if (!root)
+            return frequencies.empty() && bitCount == 0;
 
+        struct PendingNode
+        {
+            std::shared_ptr<HuffmanNode> node;
+            std::uint64_t depth;
+        };
+
+        std::vector<PendingNode> pending;
+        pending.push_back({root, 0});
+
+        std::uint64_t expectedBits = 0;
+        std::array<bool, 256> visitedSymbols = {};
+
+        while (!pending.empty())
+        {
+            const PendingNode current = pending.back();
+            pending.pop_back();
+
+            if (!current.node)
+                return false;
+
+            if (current.node->isLeaf())
+            {
+                const std::uint8_t symbol = current.node->symbol;
+
+                const auto frequency = frequencies.find(symbol);
+
+                if (frequency == frequencies.end() ||
+                    visitedSymbols[symbol])
+                    return false;
+
+                visitedSymbols[symbol] = true;
+
+                // A single-symbol tree uses the code "0".
+                const std::uint64_t codeLength =
+                    current.depth == 0 ? 1 : current.depth;
+
+                if (frequency->second >
+                    (std::numeric_limits<std::uint64_t>::max() -
+                     expectedBits) / codeLength)
+                    return false;
+
+                expectedBits += frequency->second * codeLength;
+            }
+            else
+            {
+                if (!current.node->left || !current.node->right)
+                    return false;
+
+                if (current.depth ==
+                    std::numeric_limits<std::uint64_t>::max())
+                    return false;
+
+                const std::uint64_t nextDepth = current.depth + 1;
+
+                pending.push_back({current.node->right, nextDepth});
+                pending.push_back({current.node->left, nextDepth});
+            }
+        }
+
+        // Ensure every symbol in the header exists in the tree.
         for (const auto& entry : frequencies)
         {
-            const auto code = codes.find(entry.first);
-
-            if (code == codes.end() || code->second.empty())
+            if (!visitedSymbols[entry.first])
                 return false;
-
-            const std::uint64_t codeLength =
-                static_cast<std::uint64_t>(code->second.size());
-
-            if (entry.second >
-                (std::numeric_limits<std::uint64_t>::max() -
-                 expectedBits) / codeLength)
-                return false;
-
-            expectedBits += entry.second * codeLength;
         }
 
         return expectedBits == bitCount;
@@ -314,11 +364,8 @@ bool readHuffFile(
         const std::shared_ptr<HuffmanNode> root =
             buildHuffmanTree(frequencies);
 
-        // Generate codes to validate the expected bit count.
-        const HuffmanCodeMap codes =
-            generateHuffmanCodes(root);
-
-        if (!validateBitCount(frequencies, codes, bitCount))
+        // Validate bit count directly using tree depths.
+        if (!validateBitCount(root, frequencies, bitCount))
         {
             std::cerr << "Error: Inconsistent compressed bit count."
                       << std::endl;
