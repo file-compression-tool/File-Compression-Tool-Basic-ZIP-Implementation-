@@ -91,6 +91,19 @@ The application handles different error conditions to ensure reliable operation.
 | Output write failure | Reports an error |
 
 
+## Supported Input Cases
+
+The application handles different types of input files:
+
+- Empty files.
+- Text files.
+- Files containing repeated characters.
+- Files containing different character frequencies.
+- Files containing binary data.
+
+The decompression process validates the encoded data before restoring the original file.
+
+
 ## Output paths and overwrite protection
 
 The default compressed output path is `<input-file>.huff`. For decompression,
