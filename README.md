@@ -124,6 +124,15 @@ Testing is performed at different levels:
 - **CI/CD:** GitHub Actions
 
 
+## Future Enhancements
+
+- Support for processing multiple files in a single operation.
+- Improve memory efficiency for large files.
+- Add compression statistics and performance measurements.
+- Expand automated test coverage.
+- Provide support for additional archive features.
+
+
 ## Output paths and overwrite protection
 
 The default compressed output path is `<input-file>.huff`. For decompression,
