@@ -67,3 +67,18 @@ g++ -std=c++11 test_cli.cpp cli.cpp file_reader.cpp frequency.cpp huffman_tree.c
 
 On Windows, run `.\test_cli.exe` after building the test executable with
 `-o test_cli.exe`.
+
+## Continuous integration and releases
+
+GitHub Actions builds the application and runs the CLI tests on pushes and pull
+requests targeting `main` or `master`. To publish a release, push a version tag
+such as:
+
+```sh
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The workflow reruns the build and tests, then creates a GitHub Release with
+automatically generated release notes and attaches the Linux `file-compressor`
+executable. The release is published only if the tests pass.

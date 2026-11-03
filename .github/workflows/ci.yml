@@ -8,7 +8,7 @@ on:
     branches: [main, master]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-and-test:
@@ -34,9 +34,11 @@ jobs:
       - name: Run CLI tests
         run: ./test_cli
 
-      - name: Upload release binary
+      - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: actions/upload-artifact@v4
-        with:
-          name: file-compressor-linux
-          path: file-compressor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" file-compressor
+          --title "$GITHUB_REF_NAME"
+          --generate-notes
