@@ -364,6 +364,16 @@ bool readHuffFile(
         const std::shared_ptr<HuffmanNode> root =
             buildHuffmanTree(frequencies);
 
+        // Verify reconstructed tree size against the original file size.
+        if ((originalSize == 0 && root != nullptr) ||
+            (originalSize > 0 &&
+             (!root || root->frequency != originalSize)))
+        {
+            std::cerr << "Error: Reconstructed Huffman tree size mismatch."
+                      << std::endl;
+            return false;
+        }
+
         // Validate bit count directly using tree depths.
         if (!validateBitCount(root, frequencies, bitCount))
         {
