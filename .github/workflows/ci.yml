@@ -1,3 +1,4 @@
+
 name: C++ CI
 
 on:
@@ -12,10 +13,13 @@ permissions:
 
 jobs:
   build-and-test:
+    name: Build and Test C++ Project
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Build application
         run: >
@@ -23,6 +27,9 @@ jobs:
           main.cpp cli.cpp file_reader.cpp frequency.cpp
           huffman_tree.cpp encoder.cpp decoder.cpp
           -o file-compressor
+
+      - name: Verify application build
+        run: test -f file-compressor
 
       - name: Build CLI tests
         run: >
@@ -34,11 +41,18 @@ jobs:
       - name: Run CLI tests
         run: ./test_cli
 
+      - name: Upload Linux executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: file-compressor-linux
+          path: file-compressor
+
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >
-          gh release create "$GITHUB_REF_NAME" file-compressor
-          --title "$GITHUB_REF_NAME"
-          --generate-notes
+        run: |
+          gh release create "$GITHUB_REF_NAME" file-compressor \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
+
