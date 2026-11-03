@@ -104,6 +104,16 @@ The application handles different types of input files:
 The decompression process validates the encoded data before restoring the original file.
 
 
+## Testing Strategy
+
+Testing is performed at different levels:
+
+- **Unit Testing:** Checks individual components such as file reading, frequency calculation, and Huffman coding.
+- **Integration Testing:** Checks the interaction between compression, decompression, and file handling components.
+- **Validation Testing:** Checks invalid compressed files, incorrect metadata, and error conditions.
+- **Round-trip Testing:** Compresses a file, decompresses it, and compares the restored file with the original.
+
+
 ## Output paths and overwrite protection
 
 The default compressed output path is `<input-file>.huff`. For decompression,
