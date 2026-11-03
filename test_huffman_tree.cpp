@@ -8,6 +8,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <limits>
 
 bool isPrefixFree(const HuffmanCodeMap& codes)
 {
@@ -179,7 +180,6 @@ void testMalformedTreeRejected()
     auto root = std::make_shared<HuffmanNode>('A', 10);
     auto child = std::make_shared<HuffmanNode>('B', 5);
 
-    // An internal node with only one child is malformed.
     root->left = child;
 
     bool threw = false;
@@ -189,6 +189,28 @@ void testMalformedTreeRejected()
         generateHuffmanCodes(root);
     }
     catch (const std::invalid_argument&)
+    {
+        threw = true;
+    }
+
+    assert(threw);
+}
+
+// New test: frequency overflow must be rejected.
+void testFrequencyOverflowRejected()
+{
+    std::map<uint8_t, std::uint64_t> frequencies = {
+        {'A', std::numeric_limits<std::uint64_t>::max()},
+        {'B', 1}
+    };
+
+    bool threw = false;
+
+    try
+    {
+        buildHuffmanTree(frequencies);
+    }
+    catch (const std::overflow_error&)
     {
         threw = true;
     }
@@ -226,6 +248,9 @@ int main()
 
     testMalformedTreeRejected();
     std::cout << "Malformed-tree test passed" << std::endl;
+
+    testFrequencyOverflowRejected();
+    std::cout << "Frequency-overflow test passed" << std::endl;
 
     std::cout << "All Huffman tree tests passed!" << std::endl;
 
