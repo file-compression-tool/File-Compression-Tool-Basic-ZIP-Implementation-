@@ -62,6 +62,19 @@ The file contains:
 This metadata allows the decompressor to reconstruct the Huffman tree and restore the original content.
 
 
+## Project Features
+
+- File compression using Huffman coding.
+- File decompression with original content restoration.
+- Command-line interface for easy operation.
+- Automatic output filename generation.
+- Custom output path using `-o` or `--output`.
+- Overwrite protection to prevent accidental data loss.
+- Force overwrite option using `--force`.
+- Input file validation and error handling.
+- Validation of compressed file metadata and payload.
+- Support for empty files and single-character files.
+
 
 ## Output paths and overwrite protection
 
