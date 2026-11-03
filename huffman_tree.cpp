@@ -1,6 +1,7 @@
 
 #include "huffman_tree.hpp"
 
+#include <array>
 #include <cstdint>
 #include <queue>
 #include <stdexcept>
@@ -61,7 +62,8 @@ std::shared_ptr<HuffmanNode> buildHuffmanTree(
         auto right = queue.top();
         queue.pop();
 
-        if (left->frequency > UINT64_MAX - right->frequency)
+        if (left->frequency >
+            UINT64_MAX - right->frequency)
         {
             throw std::overflow_error(
                 "Huffman frequency total overflow.");
@@ -97,15 +99,40 @@ HuffmanCodeMap generateHuffmanCodes(
     std::vector<PendingNode> pending;
     pending.push_back({root, ""});
 
+    std::array<bool, 256> visitedSymbols = {};
+
     while (!pending.empty())
     {
         PendingNode current = std::move(pending.back());
         pending.pop_back();
 
+        if (!current.node)
+        {
+            throw std::invalid_argument(
+                "Huffman tree contains a null node.");
+        }
+
         if (current.node->isLeaf())
         {
-            codes[current.node->symbol] =
+            const std::uint8_t symbol = current.node->symbol;
+
+            if (current.node->frequency == 0)
+            {
+                throw std::invalid_argument(
+                    "Leaf node frequency must be greater than zero.");
+            }
+
+            if (visitedSymbols[symbol])
+            {
+                throw std::invalid_argument(
+                    "Duplicate symbol found in Huffman tree.");
+            }
+
+            visitedSymbols[symbol] = true;
+
+            codes[symbol] =
                 current.prefix.empty() ? "0" : std::move(current.prefix);
+
             continue;
         }
 
@@ -113,6 +140,21 @@ HuffmanCodeMap generateHuffmanCodes(
         {
             throw std::invalid_argument(
                 "Internal Huffman node must have both children.");
+        }
+
+        if (current.node->left->frequency >
+            UINT64_MAX - current.node->right->frequency)
+        {
+            throw std::overflow_error(
+                "Huffman node frequency overflow.");
+        }
+
+        if (current.node->frequency !=
+            current.node->left->frequency +
+            current.node->right->frequency)
+        {
+            throw std::invalid_argument(
+                "Internal node frequency does not match its children.");
         }
 
         std::string rightPrefix = current.prefix;
