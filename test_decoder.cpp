@@ -189,6 +189,21 @@ namespace
             "binary file containing all 256 byte values");
     }
 
+    // NEW: Shuffled binary data test
+
+    bool testShuffledBinaryData()
+    {
+        std::vector<uint8_t> data;
+
+        for (int i = 0; i < 256; ++i)
+            data.push_back(static_cast<uint8_t>((i * 73) % 256));
+
+        return testRoundTrip(
+            data,
+            "decoder_shuffled_binary_test.huff",
+            "shuffled binary data");
+    }
+
     // Huffman tree reconstruction tests
 
     bool testEqualFrequencyReconstruction()
@@ -376,6 +391,11 @@ int main()
     passed &= expect(testEmptyFile(), "empty file test");
     passed &= expect(testSingleSymbol(), "single-symbol test");
     passed &= expect(testBinaryData(), "binary data test");
+
+    // NEW: Shuffled binary test
+    passed &= expect(
+        testShuffledBinaryData(),
+        "shuffled binary data test");
 
     // Huffman tree reconstruction tests
     passed &= expect(
