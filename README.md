@@ -76,6 +76,21 @@ This metadata allows the decompressor to reconstruct the Huffman tree and restor
 - Support for empty files and single-character files.
 
 
+## Error Handling
+
+The application handles different error conditions to ensure reliable operation.
+
+| Error Condition | Expected Behaviour |
+|---|---|
+| Input file not found | Displays an error message |
+| Input file cannot be read | Reports a read error |
+| Invalid command | Displays usage information |
+| Invalid option | Reports an argument error |
+| Invalid `.huff` file | Rejects the compressed file |
+| Existing output file | Requests overwrite confirmation |
+| Output write failure | Reports an error |
+
+
 ## Output paths and overwrite protection
 
 The default compressed output path is `<input-file>.huff`. For decompression,
