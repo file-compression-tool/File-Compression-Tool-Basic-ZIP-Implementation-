@@ -114,6 +114,16 @@ Testing is performed at different levels:
 - **Round-trip Testing:** Compresses a file, decompresses it, and compares the restored file with the original.
 
 
+## Technologies Used
+
+- **Programming Language:** C++
+- **Language Standard:** C++11
+- **Compression Algorithm:** Huffman Coding
+- **Build Tool:** G++ Compiler
+- **Version Control:** Git and GitHub
+- **CI/CD:** GitHub Actions
+
+
 ## Output paths and overwrite protection
 
 The default compressed output path is `<input-file>.huff`. For decompression,
