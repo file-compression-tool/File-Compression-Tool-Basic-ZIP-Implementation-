@@ -1,15 +1,24 @@
-
 name: C++ CI
 
+# Runs automatically whenever code is pushed or a pull request is opened.
+#   Job 1  build-and-test : compile the app, run every unit + integration test
+#   Job 2  quality        : code coverage (with minimum gate), end-to-end integration
+#                           tests, static analysis, summary + downloadable reports
+#   Job 3  release        : only for version tags, and only if jobs 1 and 2 passed
 on:
   push:
     branches: [main, master]
     tags: ["v*"]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+env:
+  # The pipeline FAILS if line coverage drops below this percentage.
+  COVERAGE_MIN_LINE: 70
 
 jobs:
   build-and-test:
@@ -71,44 +80,66 @@ jobs:
           name: file-compressor-linux
           path: file-compressor
 
-      - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "$GITHUB_REF_NAME" file-compressor \
-            --title "$GITHUB_REF_NAME" \
-            --generate-notes
-
-        
-  coverage:
-    name: Generate Code Coverage
-    needs: build-and-test
+  quality:
+    name: Coverage, Integration Tests and Static Analysis
     runs-on: ubuntu-latest
+    needs: build-and-test
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install analysis tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++ gcovr
+          sudo apt-get install -y cppcheck clang-tidy
+          pip install gcovr
 
-      - name: Run tests and calculate coverage
+      - name: Code coverage (all test suites)
         run: bash quality/run_coverage.sh
 
-      - name: Display coverage summary
+      - name: End-to-end integration tests
         if: always()
-        run: |
-          if [ -f quality/reports/coverage_summary.txt ]; then
-            cat quality/reports/coverage_summary.txt >> "$GITHUB_STEP_SUMMARY"
-          fi
+        run: bash quality/run_integration_tests.sh
 
-      - name: Upload coverage reports
+      - name: Static analysis (cppcheck, clang-tidy, strict g++)
+        if: always()
+        run: bash quality/run_static_analysis.sh
+
+      - name: Show results on the run summary page
+        if: always()
+        run: bash quality/ci_summary.sh >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload quality reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cpp-coverage-report
+          name: quality-reports
           path: quality/reports/
 
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-and-test, quality]
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download Linux executable
+        uses: actions/download-artifact@v4
+        with:
+          name: file-compressor-linux
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" file-compressor \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
