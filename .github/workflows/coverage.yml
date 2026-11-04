@@ -1,0 +1,49 @@
+
+name: C++ Code Coverage
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ gcovr
+
+      - name: Run tests and calculate coverage
+        run: bash quality/run_coverage.sh
+
+      - name: Check test results
+        if: always()
+        run: |
+          if [ -f quality/reports/test_results.txt ]; then
+            cat quality/reports/test_results.txt
+            if grep -qv '^PASS  ' quality/reports/test_results.txt; then
+              exit 1
+            fi
+          else
+            echo "Test results file was not generated."
+            exit 1
+          fi
+
+      - name: Display coverage summary
+        if: always()
+        run: |
+          if [ -f quality/reports/coverage_summary.txt ]; then
+            cat quality/reports/coverage_summary.txt >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpp-coverage-report
+          path: quality/reports/
