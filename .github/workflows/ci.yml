@@ -79,3 +79,36 @@ jobs:
           gh release create "$GITHUB_REF_NAME" file-compressor \
             --title "$GITHUB_REF_NAME" \
             --generate-notes
+
+        
+  coverage:
+    name: Generate Code Coverage
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ gcovr
+
+      - name: Run tests and calculate coverage
+        run: bash quality/run_coverage.sh
+
+      - name: Display coverage summary
+        if: always()
+        run: |
+          if [ -f quality/reports/coverage_summary.txt ]; then
+            cat quality/reports/coverage_summary.txt >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpp-coverage-report
+          path: quality/reports/
+
