@@ -1,0 +1,9 @@
+PASS  test_cli
+PASS  test_frequency
+PASS  test_huffman_tree
+PASS  test_encoder
+PASS  test_decoder
+PASS  test_output_writer
+PASS  test_decompressor
+PASS  test_reader
+PASS  test_integration
